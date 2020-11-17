@@ -1,5 +1,5 @@
 {
-  "name": "spotify-ad-ignorer",
+  "name": "spotify-chords",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,8 +9,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/puppeteer": "^5.4.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "puppeteer": "^5.5.0",
     "reflect-metadata": "^0.1.10",
     "request": "^2.88.2",
     "request-promise-native": "^1.0.9",

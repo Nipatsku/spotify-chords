@@ -6,9 +6,10 @@ import * as request from 'request-promise-native'
 import { Connection, createConnection, getConnection } from 'typeorm'
 import { IUserActivePlayback, IUserProfile } from './interfaces';
 import { User } from './entity/User';
+import * as puppeteer from 'puppeteer'
 
 
-
+let BACKEND_URL
 let MODE
 let CLIENT_ID
 let CLIENT_SECRET
@@ -21,6 +22,7 @@ const parseEnv = ( name ) => {
     return value
 }
 MODE = process.env.NODE_ENV || 'development'
+BACKEND_URL = parseEnv( 'BACKEND_URL' )
 CLIENT_ID = parseEnv( 'CLIENT_ID' )
 CLIENT_SECRET = parseEnv( 'CLIENT_SECRET' )
 
@@ -214,7 +216,6 @@ const setUserVolume = async ( auth, volume ) => {
             user = await UserRepository.save( user )
             console.log(`\t\tSaved user to database`)
 
-            res.send(`Hi, ${info.display_name}!\nThank you for compromising your Spotify account to the whims of a 3rd party!`)
         } else {
             // Old user.
             const userProperties = {} as Partial<User>
@@ -224,74 +225,40 @@ const setUserVolume = async ( auth, volume ) => {
             await UserRepository.update( user.id, userProperties )
             user = await UserRepository.findOne( user.id )
             console.log(`\t\tUpdated user access tokens`)
-
-            res.send(`Hi, nice to see you again. Your login credentials have been once again saved by a suspicious 3rd party software.`)
         }
 
         console.log(`\t\tuser: `, user)
+        res.send(`Login confirmed, proceed to ${BACKEND_URL + '/'}`)
+        // res.redirect( BACKEND_URL + '/' )
     })
 
-
-
-    //#region *** Main functionality ***
-
-    let test = false
-    setTimeout(() => {
-        console.log('test active')
-        test = true
-        setTimeout(() => {
-            console.log('test over')
-            test = false
-        }, 6000)
-    }, 6000)
-
-
-    /**
-     * Check if actions need to be done on ad ignoring of active users.
-     */
-    const checkOnActiveUsers = async () => {
-        const users = await UserRepository.find()
-        console.log(`\tcheckOnActiveUsers (${users.length})`)
-
-        for ( const user of users ) {
-            if ( user.dead ) {
-                continue
-            }
-
-            const auth = user.getAuth()
-            const wasPlaybackActive = user.active === true
-            const activePlayback = await getUserActivePlayback( auth )
-            const isPlaybackActive = activePlayback !== undefined
-
-            if ( activePlayback ) {
-                const wasAdvertisement = user.isAdvertisement || false
-                const isAdvertisement = user.isAdvertisement = activePlayback.currently_playing_type === 'ad' || test
-                const activeVolume = activePlayback.device.volume_percent
-
-                if ( ! isAdvertisement && ! wasAdvertisement && activeVolume > 0 ) {
-                    user.savedVolume = activeVolume
-                }
-
-                if ( wasAdvertisement !== isAdvertisement ) {
-                    const targetVolume = isAdvertisement ? 0 : (user.savedVolume !== undefined ? user.savedVolume : 50)
-                    console.log(`\t\tset user volume: `, targetVolume)
-                    setUserVolume( auth, targetVolume )
-                }
-
-            }
-
-            user.active = isPlaybackActive
-            await UserRepository.save( user )
+    app.get('/', async function(req, res) {
+        const user = await UserRepository.findOne()
+        if ( ! user ) {
+            res.redirect( BACKEND_URL + '/login' )
         }
+        const activePlayback = await getUserActivePlayback( user.getAuth() )
+        const query = activePlayback.item.name + ' ' + activePlayback.item.artists[0].name + ' chords'
+        console.log('query:', query)
+        
+        const browser = await puppeteer.launch({ headless: true });
+        const page = await browser.newPage();
+        const url = `https://www.google.com/search?q=${ encodeURI( query ) }`
+        await page.goto( url );
+        const results = await page.evaluate(() => {
+            const resultsContainer = document.getElementById('rso')
+            const results = Array.from( resultsContainer.getElementsByTagName('a') )
+            return results.map( a => a.href )
+        })
+        await browser.close();
 
+        console.log(`${results.length} results`)
+        const result =
+            results.find( url => url.includes( 'ultimate-guitar.com' ) ) ||
+            results[0]
+        console.log(`->${result}`)
+        res.redirect( result )
+    })
 
-        setTimeout( checkOnActiveUsers, INTERVAL_CHECK_ON_ACTIVE_USERS )
-    }
-
-    // Schedule tasks.
-    const INTERVAL_CHECK_ON_ACTIVE_USERS = 1000 * 1
-    await checkOnActiveUsers()
-
-    //#endregion
 
 })()
