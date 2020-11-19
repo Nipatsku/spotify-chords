@@ -1,2 +1,8 @@
 
-Looks up guitar chords from currently playing Spotify song
+- Spotify API (Authorization code flow authentication)
+
+- Puppeteer for automated Google search
+
+- Database: Sqlite
+
+- ORM: typeorm
