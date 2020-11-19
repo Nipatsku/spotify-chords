@@ -235,13 +235,28 @@ const setUserVolume = async ( auth, volume ) => {
     })
 
     app.get('/', async function(req, res) {
-        const user = await UserRepository.findOne()
+        console.log(`\tNew request`)
+        let user = await UserRepository.findOne()
         if ( ! user ) {
+            console.log(`\t\tNo registered users -> redirecting to login`)
             res.redirect( BACKEND_URL + '/login' )
         }
+
+
+        // Refresh access token.
+        const tokens = await refreshAccessTokens( user.refresh_token )
+        if ( ! tokens || ! tokens.access_token ) {
+            console.log(`\t\tCouldn't refresh access token -> redirecting to login`)
+            res.redirect( BACKEND_URL + '/login' )
+        }
+        user.access_token = tokens.access_token
+        user = await UserRepository.save( user )
+        console.log(`\t\tRefreshed user access token`)
+
+
         const activePlayback = await getUserActivePlayback( user.getAuth() )
         const query = activePlayback.item.name + ' ' + activePlayback.item.artists[0].name + ' chords'
-        console.log('query:', query)
+        console.log('\t\tquery:', query)
         
         const browser = await puppeteer.launch({ headless: true });
         const page = await browser.newPage();
@@ -254,11 +269,11 @@ const setUserVolume = async ( auth, volume ) => {
         })
         await browser.close();
 
-        console.log(`${results.length} results`)
+        console.log(`\t\t${results.length} results`)
         const result =
             results.find( url => url.includes( 'ultimate-guitar.com' ) ) ||
             results[0]
-        console.log(`->${result}`)
+        console.log(`\t\t->${result}`)
         res.redirect( result )
     })
 
