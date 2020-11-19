@@ -12,8 +12,8 @@ import * as puppeteer from 'puppeteer'
 let BACKEND_URL
 let PORT
 let MODE
-let CLIENT_ID
-let CLIENT_SECRET
+let SPOTIFY_CLIENT_ID
+let SPOTIFY_CLIENT_SECRET
 
 //#region *** .env ***
 
@@ -25,8 +25,8 @@ const parseEnv = ( name ) => {
 MODE = process.env.NODE_ENV || 'development'
 PORT = parseEnv( 'PORT' )
 BACKEND_URL = parseEnv( 'BACKEND_URL' )
-CLIENT_ID = parseEnv( 'CLIENT_ID' )
-CLIENT_SECRET = parseEnv( 'CLIENT_SECRET' )
+SPOTIFY_CLIENT_ID = parseEnv( 'SPOTIFY_CLIENT_ID' )
+SPOTIFY_CLIENT_SECRET = parseEnv( 'SPOTIFY_CLIENT_SECRET' )
 
 //#endregion
 
@@ -41,7 +41,7 @@ const getAccessTokens = async ( authCode, redirectUri ) => {
             method: 'POST',
             uri: 'https://accounts.spotify.com/api/token',
             headers: {
-                Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')}`,
+                Authorization: `Basic ${Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64')}`,
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
             form: {
@@ -62,7 +62,7 @@ const refreshAccessTokens = async ( refreshToken ) => {
             method: 'POST',
             uri: 'https://accounts.spotify.com/api/token',
             headers: {
-                Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')}`,
+                Authorization: `Basic ${Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64')}`,
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
             form: {
@@ -159,7 +159,7 @@ const setUserVolume = async ( auth, volume ) => {
     
         res.redirect('https://accounts.spotify.com/authorize' +
           '?response_type=code' +
-          '&client_id=' + CLIENT_ID +
+          '&SPOTIFY_CLIENT_ID=' + SPOTIFY_CLIENT_ID +
           (scopes ? '&scope=' + encodeURIComponent(scopes) : '') +
           '&redirect_uri=' + encodeURIComponent(redirectUri) +
           '&state=' + encodeURIComponent(JSON.stringify({ redirectUri })) +
