@@ -10,6 +10,7 @@ import * as puppeteer from 'puppeteer'
 
 
 let BACKEND_URL
+let PORT
 let MODE
 let CLIENT_ID
 let CLIENT_SECRET
@@ -22,6 +23,7 @@ const parseEnv = ( name ) => {
     return value
 }
 MODE = process.env.NODE_ENV || 'development'
+PORT = parseEnv( 'PORT' )
 BACKEND_URL = parseEnv( 'BACKEND_URL' )
 CLIENT_ID = parseEnv( 'CLIENT_ID' )
 CLIENT_SECRET = parseEnv( 'CLIENT_SECRET' )
@@ -142,7 +144,7 @@ const setUserVolume = async ( auth, volume ) => {
     const Database = await createConnection( MODE )
     const UserRepository = Database.getRepository( User )
 
-    const port = 3000
+    const port = PORT
     const app = express()
     
     app.listen( port, function () {
