@@ -255,9 +255,9 @@ const HTML_HEAD = `<head>
         ${ HTML_HEAD }
         <body>
             <div class='column'>
-                Select user:
+                Select target user:
                 ${ usersListHTML }
-                <a href=${BACKEND_URL}/login>New user</a>
+                <a href=${BACKEND_URL}/login>Register new user</a>
             </div>
         </body>`
         res.send(html)
@@ -272,13 +272,19 @@ const HTML_HEAD = `<head>
         ${ HTML_HEAD }
         <body>
             <div class='column'>
-                Selected user: ${ user.display_name }
+                Targeted user: ${ user.display_name }
                 <a href=${BACKEND_URL}/user/chords?id=${user.id}/>Active song chords</a>
-                <a href=${BACKEND_URL}/>Return</a>
+                <a href=${BACKEND_URL}/user/unimplemented?id=${user.id}/>Prank</a>
+                <a href=${BACKEND_URL}/user/unimplemented?id=${user.id}/>Stalk</a>
+                <a href=${BACKEND_URL}/>Select another user</a>
             </div>
         </body>`
         
         res.send(html)
+    })
+
+    app.get('/user/unimplemented', async function(req, res) {
+        res.send(`This feature is not implemented :(`)
     })
 
     app.get('/user/chords', async function(req, res) {
