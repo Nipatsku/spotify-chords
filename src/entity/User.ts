@@ -22,16 +22,6 @@ export class User {
     @Column()
     href: string
 
-    
-
-    @Column({nullable: true})
-    /**
-     * Marked true on unexpected errors.
-     *
-     * False if auth is refreshed.
-     */
-    dead: boolean
-
 
 
     @Column({ nullable: true })

@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 import "reflect-metadata";
 import * as express from 'express'
+import { Request, Response } from 'express'
 import * as request from 'request-promise-native'
 import { Connection, createConnection, getConnection } from 'typeorm'
 import { IUserActivePlayback, IUserProfile } from './interfaces';
@@ -138,6 +139,16 @@ const setUserVolume = async ( auth, volume ) => {
 //#endregion
 
 
+const HTML_HEAD = `<head>
+<title>Where the fuck am i</title>
+<style>
+    .column {
+        display: flex;
+        flex-direction: column;
+    }
+</style>
+</head>`
+
 
 
 ;(async () => {
@@ -155,11 +166,11 @@ const setUserVolume = async ( auth, volume ) => {
         console.log('\tA new victim has knocked on our door...')
 
         const scopes = 'user-read-private user-read-playback-state user-modify-playback-state';
-        const redirectUri = 'http://localhost:3000/login-redirect'
+        const redirectUri = `${BACKEND_URL}/login-redirect`
     
         res.redirect('https://accounts.spotify.com/authorize' +
           '?response_type=code' +
-          '&SPOTIFY_CLIENT_ID=' + SPOTIFY_CLIENT_ID +
+          '&client_id=' + SPOTIFY_CLIENT_ID +
           (scopes ? '&scope=' + encodeURIComponent(scopes) : '') +
           '&redirect_uri=' + encodeURIComponent(redirectUri) +
           '&state=' + encodeURIComponent(JSON.stringify({ redirectUri })) +
@@ -181,10 +192,8 @@ const setUserVolume = async ( auth, volume ) => {
         let state = url.match( /state=([^\&]*)/ )[1]
         state = JSON.parse(decodeURIComponent(state))
         const { redirectUri } = state
-        console.log(`\t\tstate: `, state)
     
         const code = url.match( /code=([^\&]*)/ )[1]
-        console.log(`\t\tcode: `, code)
 
 
         console.log(`\tAuthenticating...`)
@@ -223,26 +232,60 @@ const setUserVolume = async ( auth, volume ) => {
             const userProperties = {} as Partial<User>
             userProperties.access_token = auth.access_token
             userProperties.refresh_token = auth.refresh_token
-            userProperties.dead = false
             await UserRepository.update( user.id, userProperties )
             user = await UserRepository.findOne( user.id )
             console.log(`\t\tUpdated user access tokens`)
         }
 
         console.log(`\t\tuser: `, user)
-        res.send(`Login confirmed, proceed to ${BACKEND_URL + '/'}`)
-        // res.redirect( BACKEND_URL + '/' )
+        res.redirect( `${BACKEND_URL}/user?id=${ user.id }` )
     })
 
     app.get('/', async function(req, res) {
-        console.log(`\tNew request`)
-        let user = await UserRepository.findOne()
-        if ( ! user ) {
-            console.log(`\t\tNo registered users -> redirecting to login`)
-            res.redirect( BACKEND_URL + '/login' )
-        }
+        // Show user selection screen.
+        const users = await UserRepository.find()
+        const usersListHTML = users
+            .map( user => {
+                const url = `${BACKEND_URL}/user?id=${ user.id }`
+                return `<a href=${url}>${ user.display_name }</a>`
+            } )
+            .join(`\n`)
 
+        let html = `
+        ${ HTML_HEAD }
+        <body>
+            <div class='column'>
+                Select user:
+                ${ usersListHTML }
+                <a href=${BACKEND_URL}/login>New user</a>
+            </div>
+        </body>`
+        res.send(html)
+    })
 
+    app.get('/user', async function(req, res) {
+        // Read User from query parameter.
+        const user = await userFromQuery( req, res )
+
+        // Send list with actions for this account.
+        let html = `
+        ${ HTML_HEAD }
+        <body>
+            <div class='column'>
+                Selected user: ${ user.display_name }
+                <a href=${BACKEND_URL}/user/chords?id=${user.id}/>Active song chords</a>
+                <a href=${BACKEND_URL}/>Return</a>
+            </div>
+        </body>`
+        
+        res.send(html)
+    })
+
+    app.get('/user/chords', async function(req, res) {
+        // Read User from query parameter.
+        let user = await userFromQuery( req, res )
+
+        // * Redirect to chords page of Users currently playing song *
         // Refresh access token.
         const tokens = await refreshAccessTokens( user.refresh_token )
         if ( ! tokens || ! tokens.access_token ) {
@@ -277,5 +320,18 @@ const setUserVolume = async ( auth, volume ) => {
         res.redirect( result )
     })
 
+
+
+    const userFromQuery = async ( req: Request, res: Response ): Promise<User> => {
+        try {
+            const userId = req.url.match(/id=([^&/]*)/)[1]
+            const user = await UserRepository.findOne({ where: { id: userId } })
+            if ( ! user ) throw new Error(`User not found: ${ userId }`)
+            return user
+        } catch ( e ) {
+            res.send(`:(`)
+            throw e
+        }
+    }
 
 })()
